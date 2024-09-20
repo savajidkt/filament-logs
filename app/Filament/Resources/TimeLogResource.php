@@ -9,6 +9,8 @@ use App\Models\Project;
 use App\Models\Subproject;
 use App\Models\TimeLog;
 use App\Models\User;
+use Carbon\Carbon;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -19,6 +21,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Get;
+
 
 class TimeLogResource extends Resource
 {
@@ -69,22 +73,39 @@ class TimeLogResource extends Resource
                 TimePicker::make('start_time')
                     ->seconds(false)
                     ->label('Start Time')
-                    ->format('H:i')
+                    ->format('H:i:s')
                     ->required()
                     ->placeholder('Select start time')
-                    ->default(now()->startOfDay()), // Set default start time to midnight
+                    ->default(now()->startOfDay())
+                    ->reactive()
+                    ->afterStateUpdated(function (Get $get,$set, $state) {
+                        $end_time = $get('end_time');
+                        $startTime = Carbon::parse($state); // Parse the start time
+                        $endTime = Carbon::parse($end_time);   // Parse the end time
+
+                        $hours = $startTime->diffInHours($endTime); // Get the difference in hours
+                        $set('total_hours', $hours);
+                    }), // Set default start time to midnight
 
                 TimePicker::make('end_time')
                     ->seconds(false)
                     ->label('End Time')
-                    ->format('H:i')
+                    ->format('H:i:s')
                     ->required()
                     ->placeholder('Select end time')
-                    ->default(now()->endOfDay()), // Set default end time to the end of the day
+                    ->default(now()->endOfDay())->reactive()
+                    ->afterStateUpdated(function (Get $get,$set, $state) {
+                        $start_time = $get('start_time');
+                        $startTime = Carbon::parse($start_time); // Parse the start time
+                        $endTime = Carbon::parse($state);   // Parse the end time
+
+                        $hours = $startTime->diffInHours($endTime); // Get the difference in hours
+                        $set('total_hours', $hours);
+                    }), // Set default end time to the end of the day
 
                 Forms\Components\TextInput::make('total_hours')
                     ->required()
-                    ->numeric(),
+                    ->readOnly(),
             ]);
     }
 
